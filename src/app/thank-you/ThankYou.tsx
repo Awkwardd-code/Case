@@ -1,51 +1,106 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import PhonePreview from '@/components/elements/PhonePreview'
-import { formatPrice } from '@/lib/utils'
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import PhonePreview from '@/components/elements/PhonePreview';
+import { formatPrice } from '@/lib/utils';
+
+// Define CaseColorType as string instead of enum
+type CaseColorType = string;
+
+interface OrderResponse {
+  configuration?: {
+    croppedImageUrl?: string;
+    color?: CaseColorType;
+  };
+  billingAddress?: {
+    name: string;
+    street: string;
+    postalCode: string;
+    city: string;
+  };
+  shippingAddress?: {
+    name: string;
+    street: string;
+    postalCode: string;
+    city: string;
+  };
+  amount?: number;
+  configurationId?: string;
+}
 
 const ThankYou = () => {
-  const searchParams = useSearchParams()
-  const orderId = searchParams.get('orderId') || ''
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get('orderId') || '';
 
-  const [data, setData] = useState<any>(undefined)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<OrderResponse | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orderId) {
-      setError('No order ID provided.')
-      setLoading(false)
-      return
+      setError('No order ID provided.');
+      setLoading(false);
+      return;
     }
 
     const fetchPaymentStatus = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
         const res = await fetch('/api/order/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId }),
-        })
+        });
+        const json = await res.json();
 
-        const json = await res.json()
-        if (json.error) throw new Error(json.error)
-        setData(json.order)
-      } catch (err) {
-        setError('Failed to fetch payment status.')
-        setData(null)
+        if (json.error) throw new Error(json.error);
+        setData(json.order);
+      } catch (err: any) {
+        console.error('Fetch Error:', err);
+        setError('Failed to fetch payment status.');
+        setData(undefined);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchPaymentStatus()
-  }, [orderId])
+    fetchPaymentStatus();
+  }, [orderId]);
+
+  useEffect(() => {
+    if (!data?.configurationId) return;
+
+    const fetchConfiguration = async () => {
+      try {
+        const res = await fetch('/api/configuration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ configurationId: data.configurationId }),
+        });
+        const json = await res.json();
+
+        if (json.error) throw new Error(json.error);
+
+        setData(prev => ({
+          ...prev,
+          configuration: {
+            ...prev?.configuration,
+            croppedImageUrl: json.configuration.croppedImageUrl,
+            color: json.configuration.color,
+          }
+        }));
+      } catch (err: any) {
+        console.error('Configuration Fetch Error:', err);
+        setError('Failed to fetch configuration data.');
+      }
+    };
+
+    fetchConfiguration();
+  }, [data?.configurationId]);
 
   if (loading) {
     return (
@@ -56,7 +111,7 @@ const ThankYou = () => {
           <p>This won't take long.</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -64,31 +119,19 @@ const ThankYou = () => {
       <div className='w-full mt-24 flex justify-center'>
         <p className='text-red-600'>{error}</p>
       </div>
-    )
+    );
   }
 
-  if (data === false) {
+  if (!data || !data.configuration) {
     return (
       <div className='w-full mt-24 flex justify-center'>
-        <div className='flex flex-col items-center gap-2'>
-          <Loader2 className='h-8 w-8 animate-spin text-zinc-500' />
-          <h3 className='font-semibold text-xl'>Verifying your payment...</h3>
-          <p>This might take a moment.</p>
-        </div>
+        <p className='text-zinc-700'>No order or configuration data found.</p>
       </div>
-    )
+    );
   }
 
-  if (!data) {
-    return (
-      <div className='w-full mt-24 flex justify-center'>
-        <p className='text-zinc-700'>No order data found.</p>
-      </div>
-    )
-  }
-
-  const { configuration, billingAddress, shippingAddress, amount } = data
-  const { color } = configuration
+  const { billingAddress, shippingAddress, amount, configuration } = data;
+  const { color, croppedImageUrl } = configuration;
 
   return (
     <div className='bg-white'>
@@ -118,7 +161,10 @@ const ThankYou = () => {
         </div>
 
         <div className='flex space-x-6 overflow-hidden mt-4 rounded-xl bg-gray-900/5 ring-1 ring-inset ring-gray-900/10 lg:rounded-2xl'>
-          <PhonePreview croppedImageUrl={configuration.croppedImageUrl!} color={color!} />
+          <PhonePreview
+            croppedImageUrl={croppedImageUrl || '/default-image.png'}
+            color={color || 'BLACK'}
+          />
         </div>
 
         <div>
@@ -127,10 +173,10 @@ const ThankYou = () => {
               <p className='font-medium text-gray-900'>Shipping address</p>
               <div className='mt-2 text-zinc-700'>
                 <address className='not-italic'>
-                  <span className='block'>{shippingAddress?.name}</span>
-                  <span className='block'>{shippingAddress?.street}</span>
+                  <span className='block'>{shippingAddress?.name || 'N/A'}</span>
+                  <span className='block'>{shippingAddress?.street || 'N/A'}</span>
                   <span className='block'>
-                    {shippingAddress?.postalCode} {shippingAddress?.city}
+                    {shippingAddress?.postalCode || ''} {shippingAddress?.city || ''}
                   </span>
                 </address>
               </div>
@@ -139,10 +185,10 @@ const ThankYou = () => {
               <p className='font-medium text-gray-900'>Billing address</p>
               <div className='mt-2 text-zinc-700'>
                 <address className='not-italic'>
-                  <span className='block'>{billingAddress?.name}</span>
-                  <span className='block'>{billingAddress?.street}</span>
+                  <span className='block'>{billingAddress?.name || 'N/A'}</span>
+                  <span className='block'>{billingAddress?.street || 'N/A'}</span>
                   <span className='block'>
-                    {billingAddress?.postalCode} {billingAddress?.city}
+                    {billingAddress?.postalCode || ''} {billingAddress?.city || ''}
                   </span>
                 </address>
               </div>
@@ -165,7 +211,7 @@ const ThankYou = () => {
         <div className='space-y-6 border-t border-zinc-200 pt-10 text-sm'>
           <div className='flex justify-between'>
             <p className='font-medium text-zinc-900'>Subtotal</p>
-            <p className='text-zinc-700'>{formatPrice(amount)}</p>
+            <p className='text-zinc-700'>{formatPrice(amount || 0)}</p>
           </div>
           <div className='flex justify-between'>
             <p className='font-medium text-zinc-900'>Shipping</p>
@@ -173,12 +219,12 @@ const ThankYou = () => {
           </div>
           <div className='flex justify-between'>
             <p className='font-medium text-zinc-900'>Total</p>
-            <p className='text-zinc-700'>{formatPrice(amount)}</p>
+            <p className='text-zinc-700'>{formatPrice(amount || 0)}</p>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ThankYou
+export default ThankYou;

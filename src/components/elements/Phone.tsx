@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
+'use client'
+
 import { cn } from '@/lib/utils'
-import { HTMLAttributes } from 'react'
+import { HTMLAttributes, useEffect, useState } from 'react'
 
 interface PhoneProps extends HTMLAttributes<HTMLDivElement> {
   imgSrc: string
@@ -8,13 +10,23 @@ interface PhoneProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const Phone = ({ imgSrc, className, dark = false, ...props }: PhoneProps) => {
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  // Prevent rendering until after hydration on client
+  if (!hasMounted) return null
+
   return (
     <div
       className={cn(
         'relative pointer-events-none z-50 overflow-hidden',
         className
       )}
-      {...props}>
+      {...props}
+    >
       <img
         src={
           dark

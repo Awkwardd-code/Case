@@ -1,25 +1,19 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { CaseColor } from '@/models/configurationSchema';
 import { useEffect, useRef, useState } from 'react';
 import { AspectRatio } from '../ui/aspect-ratio';
 import { cn } from '@/lib/utils';
-
-// Define type for CaseColor values
-type CaseColorType = typeof CaseColor[keyof typeof CaseColor];
 
 const PhonePreview = ({
   croppedImageUrl,
   color,
 }: {
-  croppedImageUrl: string;
-  color: CaseColorType;
+  croppedImageUrl?: string;
+  color?: string;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-
   const [renderedDimensions, setRenderedDimensions] = useState({
     height: 0,
     width: 0,
@@ -37,9 +31,12 @@ const PhonePreview = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [ref.current]);
 
-  let caseBackgroundColor = 'bg-zinc-950';
-  if (color === CaseColor.BLUE) caseBackgroundColor = 'bg-blue-950';
-  if (color === CaseColor.ROSE) caseBackgroundColor = 'bg-rose-950';
+  // Choose background color based on string
+  let caseBackgroundColor = 'bg-zinc-950'; // default black
+  if (color === 'BLUE') caseBackgroundColor = 'bg-blue-950';
+  else if (color === 'ROSE') caseBackgroundColor = 'bg-rose-950';
+
+  const imageUrl = croppedImageUrl || '/default-image.png';
 
   return (
     <AspectRatio ref={ref} ratio={3000 / 2001} className="relative">
@@ -58,7 +55,8 @@ const PhonePreview = ({
             'phone-skew relative z-20 rounded-t-[15px] rounded-b-[10px] md:rounded-t-[30px] md:rounded-b-[20px]',
             caseBackgroundColor
           )}
-          src={croppedImageUrl}
+          src={imageUrl}
+          alt="Phone case preview"
         />
       </div>
 

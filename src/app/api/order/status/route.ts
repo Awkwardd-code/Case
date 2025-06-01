@@ -8,6 +8,7 @@ export async function POST(req: Request) {
 
   try {
     const order = await getPaymentStatus({ orderId });
+    // console.log(order);
     return NextResponse.json({ order });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });
