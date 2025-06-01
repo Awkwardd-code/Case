@@ -8,7 +8,6 @@ import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import PhonePreview from '@/components/elements/PhonePreview'
 import { formatPrice } from '@/lib/utils'
-import { getPaymentStatus } from './actions'
 
 const ThankYou = () => {
   const searchParams = useSearchParams()
@@ -28,8 +27,15 @@ const ThankYou = () => {
     const fetchPaymentStatus = async () => {
       setLoading(true)
       try {
-        const result = await getPaymentStatus({ orderId })
-        setData(result)
+        const res = await fetch('/api/order/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId }),
+        })
+
+        const json = await res.json()
+        if (json.error) throw new Error(json.error)
+        setData(json.order)
       } catch (err) {
         setError('Failed to fetch payment status.')
         setData(null)
